@@ -1,0 +1,917 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scientific Collaborator</title>
+<meta name="description" content="Turn a research question into a cited, fact-checked manuscript.">
+<script>
+  // Set the theme before first paint so there is no light/dark flash.
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem("theme"); } catch (e) {}
+    if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<style>
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --surface-2:#f8f9fb; --ink:#0f1b2a; --ink-2:#38465a; --muted:#66748a;
+  --line:#e2e7ee; --line-2:#cfd7e2;
+  --accent:#1d4f91; --accent-hover:#163f75; --accent-ink:#ffffff; --accent-soft:#e8f0fc; --accent-line:#bcd0ee;
+  --ok:#17794f; --ok-soft:#e4f4ec; --warn:#955700; --warn-soft:#fdf1dc; --err:#b3261e; --err-soft:#fdeceb;
+  --shadow:0 1px 2px rgba(15,27,42,.05),0 6px 20px rgba(15,27,42,.06);
+  --shadow-lg:0 12px 40px rgba(15,27,42,.18);
+  --radius:14px; --radius-sm:9px;
+  --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --serif:Charter,"Bitstream Charter","Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --bg:#0d1218; --surface:#151b23; --surface-2:#1a212b; --ink:#e8ecf2; --ink-2:#b5bfce; --muted:#8793a5;
+  --line:#252d38; --line-2:#323c4a;
+  --accent:#6fa8f2; --accent-hover:#8bbaf6; --accent-ink:#0b1320; --accent-soft:#182740; --accent-line:#2a4570;
+  --ok:#52c08f; --ok-soft:#12291f; --warn:#e5a94f; --warn-soft:#2d2210; --err:#f0807a; --err-soft:#321817;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.55);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.hidden{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ic{width:1.15em;height:1.15em;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.2em}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:288px minmax(0,1fr);min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;background:var(--surface);border-right:1px solid var(--line);padding:18px 14px 14px}
+.brand{display:flex;align-items:center;gap:11px;padding:2px 6px 16px}
+.logo{width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;flex:none}
+.logo svg{width:20px;height:20px}
+.brand b{display:block;font-size:15px;letter-spacing:-.01em;line-height:1.2}
+.brand span{display:block;font-size:12px;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--radius-sm);border:1px solid var(--line-2);background:var(--surface);padding:8px 14px;font-weight:600;font-size:14px;transition:background .15s,border-color .15s,transform .05s;text-decoration:none;color:var(--ink)}
+.btn:hover{background:var(--surface-2);border-color:var(--muted)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn.block{width:100%}
+.btn.lg{padding:12px 22px;font-size:15px;border-radius:11px}
+.icon-btn{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;border:1px solid transparent;background:none;color:var(--ink-2)}
+.icon-btn:hover{background:var(--surface-2);border-color:var(--line)}
+.side-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:20px 8px 8px}
+.runs{list-style:none;margin:0;padding:0;overflow:auto;flex:1;display:flex;flex-direction:column;gap:2px}
+.run{display:block;width:100%;text-align:left;background:none;border:0;padding:9px 10px;border-radius:9px;color:var(--ink)}
+.run:hover{background:var(--surface-2)}
+.run.on{background:var(--accent-soft)}
+.run .t{display:block;font-size:13.5px;font-weight:550;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.run .m{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.err{background:var(--err)}
+.dot.run{background:var(--accent);animation:pulse 1.4s ease-in-out infinite}
+.empty-side{font-size:13px;color:var(--muted);padding:6px 10px}
+.side-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);margin-top:10px;padding-top:12px}
+.model{display:flex;align-items:center;gap:7px;min-width:0;font-size:12px;color:var(--muted)}
+.model code{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar{display:none}
+.scrim{display:none}
+
+/* ---------- main ---------- */
+main{min-width:0;padding:clamp(20px,4vw,48px) clamp(16px,4vw,56px) 80px}
+.wrap{max-width:900px;margin:0 auto}
+.wrap.wide{max-width:1180px}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:650;color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent-line);padding:4px 11px;border-radius:99px}
+.hero h1{font-size:clamp(28px,4.4vw,42px);line-height:1.12;letter-spacing:-.025em;margin:16px 0 12px;font-weight:750}
+.hero p.lead{font-size:clamp(15.5px,1.6vw,17.5px);color:var(--ink-2);max-width:60ch}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.compose{margin-top:28px;padding:clamp(16px,2.5vw,26px)}
+.field-label{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:650;margin-bottom:8px}
+.field-label small{font-weight:500;color:var(--muted);font-size:12px}
+textarea,input[type=text],input[type=email],input[type=search]{width:100%;font:inherit;color:var(--ink);background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--radius-sm);padding:12px 13px;transition:border-color .15s,box-shadow .15s}
+textarea{min-height:104px;resize:vertical;font-size:16px;line-height:1.5}
+textarea:focus,input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+::placeholder{color:var(--muted);opacity:.85}
+.examples{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.examples span{font-size:12.5px;color:var(--muted)}
+.chip{border:1px solid var(--line-2);background:var(--surface);border-radius:99px;padding:4px 12px;font-size:13px;color:var(--ink-2)}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.group{margin-top:24px}
+.opts{display:grid;gap:10px}
+.opts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
+.opt .box{display:block;height:100%;border:1.5px solid var(--line-2);border-radius:var(--radius-sm);padding:12px 14px;background:var(--surface);transition:border-color .15s,background .15s}
+.opt .box b{display:flex;align-items:center;gap:8px;font-size:14px}
+.opt .box small{display:block;margin-top:3px;color:var(--muted);font-size:12.5px;line-height:1.4}
+.opt:hover .box{border-color:var(--muted)}
+.opt input:checked + .box{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent) inset}
+.opt input:focus-visible + .box{outline:2px solid var(--accent);outline-offset:2px}
+.submit-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:26px}
+.hint{font-size:12.5px;color:var(--muted)}
+kbd{font:600 11.5px var(--mono);border:1px solid var(--line-2);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--surface-2)}
+.alert{display:flex;gap:10px;align-items:flex-start;border:1px solid;border-radius:var(--radius-sm);padding:11px 14px;font-size:14px}
+.alert.warn{color:var(--warn);background:var(--warn-soft);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.alert.err{color:var(--err);background:var(--err-soft);border-color:color-mix(in srgb,var(--err) 40%,transparent)}
+.alert.ok{color:var(--ok);background:var(--ok-soft);border-color:color-mix(in srgb,var(--ok) 40%,transparent)}
+.alert code{font-family:var(--mono);font-size:.9em}
+.how{margin-top:44px}
+.how h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px}
+.how ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.how li{padding:14px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+.how li .ic{color:var(--accent);font-size:20px}
+.how li b{display:block;margin:8px 0 3px;font-size:14px}
+.how li span{font-size:12.5px;color:var(--muted);line-height:1.45;display:block}
+.promises{margin-top:18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.promise{display:flex;gap:10px;font-size:13px;color:var(--ink-2);line-height:1.45}
+.promise .ic{color:var(--ok);margin-top:2px;font-size:17px}
+
+/* ---------- progress ---------- */
+.run-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.run-head h1{font-size:clamp(20px,2.6vw,26px);line-height:1.25;letter-spacing:-.015em;max-width:60ch}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+.badge.ok{color:var(--ok);background:var(--ok-soft);border-color:transparent}
+.badge.warn{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+.badge.err{color:var(--err);background:var(--err-soft);border-color:transparent}
+.badge.accent{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+.progress-card{margin-top:22px;padding:clamp(16px,2.5vw,28px)}
+.stepper{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0}
+.step{position:relative;text-align:center;padding:0 4px}
+.step::before{content:"";position:absolute;top:17px;left:calc(-50% + 20px);right:calc(50% + 20px);height:2px;background:var(--line-2)}
+.step:first-child::before{display:none}
+.step.done::before,.step.active::before{background:var(--accent)}
+.node{width:36px;height:36px;border-radius:50%;margin:0 auto;display:grid;place-items:center;border:2px solid var(--line-2);background:var(--surface);color:var(--muted);position:relative;z-index:1;font-size:15px}
+.step.done .node{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.step.active .node{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 18%,transparent);animation:ring 2s ease-in-out infinite}
+.step b{display:block;margin-top:9px;font-size:13px;font-weight:650;color:var(--muted)}
+.step.active b,.step.done b{color:var(--ink)}
+.now{display:flex;align-items:center;gap:12px;margin-top:26px;padding:14px 16px;border-radius:var(--radius-sm);background:var(--accent-soft);border:1px solid var(--accent-line)}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid color-mix(in srgb,var(--accent) 25%,transparent);border-top-color:var(--accent);animation:spin .8s linear infinite;flex:none}
+.now p{font-weight:550;flex:1;min-width:0}
+.now small{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap}
+.waitnote{margin-top:10px;font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.feed-title{margin:22px 0 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:flex;justify-content:space-between}
+.feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.feed li{display:flex;gap:10px;align-items:flex-start;padding:7px 4px;font-size:13.5px;color:var(--ink-2);border-bottom:1px dashed var(--line);animation:fadein .25s ease}
+.feed li .ic{color:var(--accent);margin-top:2px}
+.feed li:first-child{color:var(--ink);font-weight:550}
+details.raw{margin-top:18px}
+details.raw summary{cursor:pointer;font-size:13px;color:var(--muted);list-style:none;display:flex;align-items:center;gap:6px}
+details.raw summary::-webkit-details-marker{display:none}
+pre.log{margin:10px 0 0;max-height:260px;overflow:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;font:12px/1.55 var(--mono);white-space:pre-wrap;color:var(--ink-2)}
+.fail{margin-top:20px}
+.fail .btn{margin-top:12px}
+
+/* ---------- results ---------- */
+.result-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.result-head h1{font-size:clamp(22px,3vw,32px);line-height:1.2;letter-spacing:-.02em;margin:12px 0 6px;max-width:34em;font-weight:750}
+.result-head .sub{color:var(--muted);font-size:14px;max-width:60ch}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:24px}
+.stat{padding:14px 16px}
+.stat .n{font-size:26px;font-weight:750;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{font-size:12.5px;color:var(--muted);margin-top:4px}
+.stat.warn .n{color:var(--warn)} .stat.ok .n{color:var(--ok)}
+.flagbox{margin-top:16px}
+.flagbox .alert{align-items:center}
+.flagbox details{border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);background:var(--warn-soft);border-radius:var(--radius-sm)}
+.flagbox summary{cursor:pointer;padding:12px 14px;font-weight:650;color:var(--warn);display:flex;gap:10px;align-items:center;list-style:none}
+.flagbox summary::-webkit-details-marker{display:none}
+.flagbox summary .chev{margin-left:auto;transition:transform .2s}
+.flagbox details[open] summary .chev{transform:rotate(180deg)}
+.flaglist{list-style:none;margin:0;padding:0 14px 8px}
+.flaglist li{padding:11px 0;border-top:1px solid color-mix(in srgb,var(--warn) 25%,transparent);font-size:14px;color:var(--ink)}
+.flaglist .why{color:var(--muted);font-size:13px;margin-top:3px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-top:28px;overflow-x:auto;scrollbar-width:none}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:11px 16px;font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap;margin-bottom:-1px;display:flex;gap:8px;align-items:center}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected="true"]{color:var(--accent);border-color:var(--accent)}
+.tabs .count{font-size:11.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:0 7px;color:var(--muted)}
+.reader{display:grid;grid-template-columns:minmax(0,1fr);gap:32px;margin-top:22px}
+.reader.has-toc{grid-template-columns:minmax(0,1fr) 220px}
+.sheet{padding:clamp(22px,5vw,60px);min-width:0}
+.toc{position:sticky;top:20px;align-self:start;font-size:13px;max-height:calc(100vh - 40px);overflow:auto}
+.toc h4{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+.toc a{display:block;padding:5px 0 5px 12px;border-left:2px solid var(--line);color:var(--ink-2);text-decoration:none;line-height:1.4}
+.toc a:hover{color:var(--accent);border-color:var(--accent)}
+.prose{font-family:var(--serif);font-size:1.07rem;line-height:1.78;color:var(--ink);overflow-wrap:anywhere}
+.prose.sans{font-family:var(--sans);font-size:.97rem;line-height:1.65}
+.prose h1{font-size:clamp(26px,3.4vw,34px);line-height:1.2;letter-spacing:-.015em;margin:0 0 .9em;font-weight:700}
+.prose h2{font-size:1.4rem;line-height:1.3;margin:2.1em 0 .6em;letter-spacing:-.01em;font-weight:700;scroll-margin-top:20px}
+.prose h3{font-size:1.15rem;margin:1.6em 0 .5em;font-weight:700}
+.prose p{margin:0 0 1.05em}
+.prose ul,.prose ol{padding-left:1.5em;margin:0 0 1.1em}
+.prose li{margin:.3em 0}
+.prose blockquote{margin:1.2em 0;padding:.2em 1.1em;border-left:3px solid var(--accent-line);color:var(--ink-2)}
+.prose hr{border:0;border-top:1px solid var(--line);margin:2em 0}
+.prose code{font-family:var(--mono);font-size:.86em;background:var(--surface-2);border:1px solid var(--line);padding:.05em .35em;border-radius:5px}
+.prose table{border-collapse:collapse;width:100%;font-size:.92em;margin:1em 0}
+.prose th,.prose td{border:1px solid var(--line);padding:7px 10px;text-align:left}
+.prose th{background:var(--surface-2)}
+.prose strong{font-weight:700}
+.prose .refkey{font:600 .72em var(--mono);color:var(--muted);background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:.08em}
+.prose h2:last-of-type ~ ul{font-size:.93em;line-height:1.6}
+.cite{display:inline-block;font:600 .74em var(--sans);color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:99px;padding:0 8px;margin:0 1px;cursor:pointer;white-space:nowrap;vertical-align:.12em;line-height:1.7;transition:background .15s}
+.cite:hover,.cite:focus-visible{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.cite.missing{color:var(--err);background:var(--err-soft);border-color:transparent}
+mark.flag{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;border-radius:3px;padding:0 2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.fallback{white-space:pre-wrap;font:13px/1.6 var(--mono)}
+.pop{position:fixed;z-index:60;width:min(340px,calc(100vw - 24px));background:var(--surface);border:1px solid var(--line-2);border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);padding:14px;font:13px/1.5 var(--sans);color:var(--ink)}
+.pop b{display:block;font-size:14px;line-height:1.35;margin-bottom:4px}
+.pop .meta{color:var(--muted);font-size:12.5px}
+.pop p{margin-top:8px;color:var(--ink-2);font-size:12.5px}
+.pop a{display:inline-flex;gap:5px;align-items:center;margin-top:8px;font-weight:600;font-size:12.5px}
+
+/* sources */
+.src-tools{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.src-tools input{max-width:360px}
+.src-tools .hint{margin-left:auto}
+.srcs{display:grid;gap:12px}
+.src{padding:16px 18px}
+.src h3{font-size:15.5px;line-height:1.4;font-weight:650}
+.src .by{color:var(--muted);font-size:13px;margin-top:3px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.tag{font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+.tag.cited{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.tag.key{font-family:var(--mono);font-weight:500}
+.src details{margin-top:10px}
+.src summary{cursor:pointer;font-size:13px;color:var(--accent);font-weight:600}
+.src details p{margin-top:8px;font-size:13.5px;color:var(--ink-2);line-height:1.6}
+.src .links{margin-left:auto}
+.src .links a{font-size:12.5px;font-weight:600;display:inline-flex;gap:5px;align-items:center}
+.none{padding:30px;text-align:center;color:var(--muted)}
+
+/* dialog + toast */
+dialog{border:1px solid var(--line-2);border-radius:var(--radius);background:var(--surface);color:var(--ink);padding:0;width:min(480px,calc(100vw - 24px));box-shadow:var(--shadow-lg)}
+dialog::backdrop{background:rgba(8,12,18,.55);backdrop-filter:blur(2px)}
+.dlg{padding:24px}
+.dlg-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:6px}
+.dlg h3{font-size:18px;letter-spacing:-.01em}
+.dlg .lead{color:var(--muted);font-size:13.5px;margin-bottom:18px}
+.dlg label.l{display:block;font-size:13px;font-weight:650;margin:14px 0 6px}
+.dlg .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.check{display:flex;gap:10px;align-items:flex-start;margin-top:18px;padding:12px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2);font-size:13px;color:var(--ink-2);line-height:1.5;cursor:pointer}
+.check input{margin-top:3px;width:16px;height:16px;accent-color:var(--accent);flex:none}
+.dlg .err{color:var(--err);font-size:13px;margin-top:12px;min-height:1px}
+.dlg-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:80;max-width:min(380px,calc(100vw - 32px))}
+.toast{background:var(--ink);color:var(--bg);padding:11px 15px;border-radius:var(--radius-sm);box-shadow:var(--shadow-lg);font-size:14px;display:flex;gap:10px;align-items:flex-start;animation:fadein .2s ease}
+.toast.err{background:var(--err);color:#fff}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{opacity:.35}}
+@keyframes ring{50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--accent) 8%,transparent)}}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+@media (max-width:1180px){.reader.has-toc{grid-template-columns:minmax(0,1fr)}.toc{display:none}}
+@media (max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .sidebar{position:fixed;z-index:50;left:0;top:0;bottom:0;width:min(300px,86vw);transform:translateX(-102%);transition:transform .22s ease;box-shadow:var(--shadow-lg)}
+  .sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(8,12,18,.5);z-index:40}
+  .topbar{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:9px 14px}
+  .topbar .brand{padding:0}
+  .how ol{grid-template-columns:1fr 1fr}
+  .promises{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+}
+@media (max-width:560px){
+  .opts.three{grid-template-columns:1fr}
+  .step b{font-size:11px}
+  .node{width:30px;height:30px}
+  .step::before{top:14px;left:calc(-50% + 16px);right:calc(50% + 16px)}
+  .dlg .two{grid-template-columns:1fr}
+  .how ol{grid-template-columns:1fr}
+  .actions .btn:not(.primary) span.t{display:none}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17.5v.01"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3M4 5v3.5h3.5M4 13a8 8 0 0 0 14.9 3M20 19v-3.5h-3.5"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2z"/><path d="M4 20a2 2 0 0 0 2 2h13v-4"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.2"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar" aria-label="Research history">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.2"/><circle cx="18" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M8 8l3 8M16.2 7.6 13 16M8.2 7l7.6-.8"/></svg>
+      </div>
+      <div><b>Scientific Collaborator</b><span>Research assistant</span></div>
+    </div>
+    <button class="btn primary block" id="new"><svg class="ic"><use href="#i-plus"/></svg>New research</button>
+    <div class="side-label">Recent</div>
+    <ul class="runs" id="runs"></ul>
+    <div class="side-foot">
+      <div class="model" title="Language model in use"><svg class="ic"><use href="#i-sparkles"/></svg><code id="modelname">connecting…</code></div>
+      <button class="icon-btn" id="theme" aria-label="Toggle light and dark theme"></button>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <div style="min-width:0">
+    <div class="topbar">
+      <button class="icon-btn" id="menu" aria-label="Open menu"><svg class="ic"><use href="#i-menu"/></svg></button>
+      <div class="brand"><div class="logo" style="width:28px;height:28px;border-radius:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px"><circle cx="6" cy="7" r="2.2"/><circle cx="18" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M8 8l3 8M16.2 7.6 13 16M8.2 7l7.6-.8"/></svg></div><b>Scientific Collaborator</b></div>
+    </div>
+
+    <main>
+      <!-- ============ compose ============ -->
+      <section id="form" class="wrap">
+        <div class="hero">
+          <span class="eyebrow"><svg class="ic"><use href="#i-sparkles"/></svg>AI-assisted literature research</span>
+          <h1>From a research question to a cited, fact-checked draft</h1>
+          <p class="lead">Ask a question. The assistant searches the scientific literature, finds patterns across papers, writes a structured manuscript, and checks each claim against its source.</p>
+        </div>
+
+        <div class="alert warn hidden" id="nokey" style="margin-top:22px"><svg class="ic"><use href="#i-alert"/></svg><div>The server has no <code>LLM_API_KEY</code>. Add it to <code>.env</code> and restart the server before starting a run.</div></div>
+
+        <form class="card compose" id="composeForm" autocomplete="off">
+          <label class="field-label" for="topic">Research question or topic <small id="count">0 / 400</small></label>
+          <textarea id="topic" maxlength="400" placeholder="e.g. Do gut microbiome signatures predict response to immunotherapy?" required></textarea>
+          <div class="examples">
+            <span>Try:</span>
+            <button type="button" class="chip" data-ex="How does sleep deprivation affect memory consolidation in adults?">Sleep and memory</button>
+            <button type="button" class="chip" data-ex="CRISPR off-target effect prediction with machine learning">CRISPR off-target prediction</button>
+            <button type="button" class="chip" data-ex="How does intermittent fasting affect gut microbiome diversity in adults?">Fasting and the microbiome</button>
+          </div>
+
+          <div class="group">
+            <div class="field-label">What should it write?</div>
+            <div class="opts three" role="radiogroup" aria-label="Output type">
+              <label class="opt"><input type="radio" name="kind" value="review" checked><span class="box"><b><svg class="ic"><use href="#i-book"/></svg>Literature review</b><small>Synthesises what the papers say, by theme.</small></span></label>
+              <label class="opt"><input type="radio" name="kind" value="paper"><span class="box"><b><svg class="ic"><use href="#i-file"/></svg>Research paper</b><small>A paper built on the literature, with hypotheses.</small></span></label>
+              <label class="opt"><input type="radio" name="kind" value="proposal"><span class="box"><b><svg class="ic"><use href="#i-pen"/></svg>Grant proposal</b><small>Significance, gap, aims and approach.</small></span></label>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="field-label">Search depth</div>
+            <div class="opts three" role="radiogroup" aria-label="Search depth">
+              <label class="opt"><input type="radio" name="depth" value="6"><span class="box"><b>Quick</b><small>Fewer searches. Faster, narrower.</small></span></label>
+              <label class="opt"><input type="radio" name="depth" value="12" checked><span class="box"><b>Standard</b><small>A balanced search across databases.</small></span></label>
+              <label class="opt"><input type="radio" name="depth" value="20"><span class="box"><b>Thorough</b><small>More sources. Takes longer.</small></span></label>
+            </div>
+          </div>
+
+          <div class="submit-row">
+            <button type="submit" class="btn primary lg" id="go"><svg class="ic"><use href="#i-search"/></svg>Start research</button>
+            <span class="hint">or press <kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
+          </div>
+        </form>
+
+        <section class="how" aria-labelledby="howh">
+          <h2 id="howh">How it works</h2>
+          <ol>
+            <li><svg class="ic"><use href="#i-search"/></svg><b>Scout</b><span>Searches arXiv, PubMed and Semantic Scholar.</span></li>
+            <li><svg class="ic"><use href="#i-bulb"/></svg><b>Discover</b><span>Finds patterns, conflicts and gaps.</span></li>
+            <li><svg class="ic"><use href="#i-pen"/></svg><b>Write</b><span>Drafts from facts verified in abstracts.</span></li>
+            <li><svg class="ic"><use href="#i-sparkles"/></svg><b>Polish</b><span>Clearer prose; citations and numbers locked.</span></li>
+            <li><svg class="ic"><use href="#i-shield"/></svg><b>Verify</b><span>Checks every claim against its source.</span></li>
+          </ol>
+          <div class="promises">
+            <div class="promise"><svg class="ic"><use href="#i-check"/></svg><span>Citations come only from papers it actually found.</span></div>
+            <div class="promise"><svg class="ic"><use href="#i-check"/></svg><span>Numbers and quotes are checked against the abstracts.</span></div>
+            <div class="promise"><svg class="ic"><use href="#i-alert" style="color:var(--warn)"/></svg><span>It reads abstracts, not full papers. Verify before you rely on it.</span></div>
+          </div>
+        </section>
+      </section>
+
+      <!-- ============ progress ============ -->
+      <section id="progress" class="wrap hidden" aria-live="polite">
+        <div class="run-head">
+          <div>
+            <span class="badge accent" id="pbadge"></span>
+            <h1 id="ptopic" style="margin-top:12px"></h1>
+          </div>
+        </div>
+        <div class="card progress-card">
+          <ol class="stepper" id="steps">
+            <li class="step" data-s="1" data-ic="search"><div class="node"></div><b>Scout</b></li>
+            <li class="step" data-s="2" data-ic="bulb"><div class="node"></div><b>Discover</b></li>
+            <li class="step" data-s="3" data-ic="pen"><div class="node"></div><b>Write</b></li>
+            <li class="step" data-s="4" data-ic="sparkles"><div class="node"></div><b>Polish</b></li>
+            <li class="step" data-s="5" data-ic="shield"><div class="node"></div><b>Verify</b></li>
+          </ol>
+          <div class="now" id="now"><div class="spin" id="spin"></div><p id="nowtext">Starting…</p><small id="elapsed"></small></div>
+          <div class="waitnote hidden" id="waitnote"><svg class="ic"><use href="#i-clock"/></svg><span id="waittext"></span></div>
+          <div class="feed-title"><span>Activity</span><span id="papercount"></span></div>
+          <ul class="feed" id="feed"></ul>
+          <details class="raw"><summary><svg class="ic"><use href="#i-chev"/></svg>Technical log</summary><pre class="log" id="rawlog"></pre></details>
+          <div class="alert err fail hidden" id="fail" role="alert"><svg class="ic"><use href="#i-alert"/></svg><div><b id="failtitle">This run didn't finish</b><p id="failmsg" style="margin-top:4px"></p><button class="btn" id="retry"><svg class="ic"><use href="#i-refresh"/></svg>Edit and try again</button></div></div>
+        </div>
+      </section>
+
+      <!-- ============ result ============ -->
+      <section id="result" class="wrap wide hidden">
+        <div class="result-head">
+          <div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge accent" id="rkind"></span><span class="badge" id="rdate"></span><span class="badge" id="rtime"></span></div>
+            <h1 id="rtitle"></h1>
+          </div>
+          <div class="actions">
+            <button class="btn primary" id="pdfbtn"><svg class="ic"><use href="#i-download"/></svg><span class="t">Download PDF</span></button>
+            <button class="btn" id="copy"><svg class="ic"><use href="#i-copy"/></svg><span class="t">Copy</span></button>
+            <a class="btn" id="dl"><svg class="ic"><use href="#i-file"/></svg><span class="t">Markdown</span></a>
+          </div>
+        </div>
+
+        <div class="stats" id="stats"></div>
+        <div class="flagbox" id="flags"></div>
+
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <div class="reader" id="reader">
+          <div class="card sheet"><div class="prose" id="doc"></div></div>
+          <nav class="toc hidden" id="toc" aria-label="On this page"></nav>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="pop hidden" id="pop" role="tooltip"></div>
+<div class="toasts" id="toasts" role="status"></div>
+
+<dialog id="pdfdlg" aria-labelledby="dlgtitle">
+  <form class="dlg" id="pdfform" method="dialog">
+    <div class="dlg-head">
+      <h3 id="dlgtitle">Put your name on the paper</h3>
+      <button type="button" class="icon-btn" id="pdfx" aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <p class="lead">These details are printed on the PDF only. They travel with this download request and are not stored on the server.</p>
+    <label class="l" for="f_name" style="margin-top:0">Full name <span style="color:var(--err)">*</span></label>
+    <input type="text" id="f_name" required minlength="2" maxlength="120" autocomplete="name" placeholder="Jane Q. Researcher">
+    <label class="l" for="f_aff">Affiliation</label>
+    <input type="text" id="f_aff" maxlength="200" autocomplete="organization" placeholder="Department, university or company">
+    <div class="two">
+      <div><label class="l" for="f_email">Email</label><input type="email" id="f_email" maxlength="120" autocomplete="email" placeholder="you@example.org"></div>
+      <div><label class="l" for="f_orcid">ORCID <span style="font-weight:400;color:var(--muted)">(optional)</span></label><input type="text" id="f_orcid" maxlength="40" placeholder="0000-0000-0000-0000"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="f_disc" checked><span><b style="color:var(--ink)">Include an AI-assistance note.</b> A short line saying the draft was produced with AI assistance and checked against abstracts only. Many journals and universities require this.</span></label>
+    <p class="err" id="pdferr"></p>
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="pdfcancel">Cancel</button>
+      <button type="submit" class="btn primary" id="pdfgo"><svg class="ic"><use href="#i-download"/></svg>Create PDF</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const icon = (n, extra = "") => `<svg class="ic" ${extra} aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const ACTIVE = s => s === "running" || s === "queued";
+
+const KIND = { review: "Literature review", paper: "Research paper", proposal: "Grant proposal" };
+const STATUS = {
+  queued: ["Queued", "idle"], running: ["Running", "run"], done: ["Complete", "ok"],
+  done_with_warnings: ["Needs review", "warn"], failed: ["Failed", "err"],
+};
+const STAGES = {
+  0: "Starting up…",
+  1: "Searching arXiv, PubMed and Semantic Scholar for relevant papers",
+  2: "Looking for patterns, conflicts and gaps across the papers",
+  3: "Extracting verified facts and drafting the manuscript",
+  4: "Polishing the prose without touching citations or numbers",
+  5: "Checking every claim against its source abstract",
+};
+const SOURCE = { search_arxiv: "arXiv", search_pubmed: "PubMed", search_semantic_scholar: "Semantic Scholar" };
+const TABS = [["final", "Manuscript"], ["hypotheses", "Hypotheses"], ["evidence", "Evidence notes"], ["verification", "Verification"], ["library", "Sources"]];
+
+let current = null, timer = null, ticker = null, cursor = 0, data = null, tab = "final", feed = [], paperCount = 0;
+
+/* ---------------- small helpers ---------------- */
+function toast(msg, kind = "") {
+  const t = document.createElement("div");
+  t.className = "toast " + kind;
+  t.innerHTML = icon(kind === "err" ? "alert" : "check") + `<span>${esc(msg)}</span>`;
+  $("toasts").append(t);
+  setTimeout(() => t.remove(), 4200);
+}
+const store = {
+  get: k => { try { return localStorage.getItem(k) || ""; } catch { return ""; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
+};
+function view(name) {
+  ["form", "progress", "result"].forEach(s => $(s).classList.toggle("hidden", s !== name));
+  window.scrollTo(0, 0);
+  closeMenu();
+}
+const mmss = secs => { secs = Math.max(0, Math.round(secs)); return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`; };
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    const body = await r.json().catch(() => ({}));
+    const d = body.detail;
+    throw new Error(Array.isArray(d) ? d.map(x => x.msg).join("; ") : (d || r.statusText));
+  }
+  return r.json();
+}
+const surname = n => (n || "").trim().split(/\s+/).pop() || "Unknown";
+function citeLabel(p) {
+  if (!p) return "?";
+  const a = p.authors || [];
+  return `${surname(a[0])}${a.length > 1 ? " et al." : ""} ${p.year || "n.d."}`;
+}
+
+/* ---------------- theme + mobile menu ---------------- */
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("theme").innerHTML = icon(t === "dark" ? "sun" : "moon");
+  store.set("theme", t);
+}
+$("theme").onclick = () => setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+setTheme(document.documentElement.dataset.theme || "light");
+const closeMenu = () => { $("sidebar").classList.remove("open"); $("scrim").classList.remove("show"); };
+$("menu").onclick = () => { $("sidebar").classList.add("open"); $("scrim").classList.add("show"); };
+$("scrim").onclick = closeMenu;
+
+/* ---------------- history sidebar ---------------- */
+async function loadRuns() {
+  let rows = [];
+  try { rows = await api("/api/runs"); } catch { return; }
+  $("runs").innerHTML = rows.length ? rows.map(r => {
+    const [label, tone] = STATUS[r.status] || [r.status, "idle"];
+    return `<li><button class="run ${r.id === current ? "on" : ""}" data-id="${esc(r.id)}">
+      <span class="t">${esc(r.topic)}</span>
+      <span class="m"><span class="dot ${tone}"></span>${esc(KIND[r.kind] || r.kind)} · ${esc(label)}</span></button></li>`;
+  }).join("") : '<li class="empty-side">Your research will appear here.</li>';
+}
+$("runs").onclick = e => { const b = e.target.closest("button[data-id]"); if (b) openRun(b.dataset.id); };
+function goHome() {
+  clearInterval(timer); clearInterval(ticker);
+  current = null;
+  history.pushState(null, "", location.pathname);
+  view("form"); loadRuns();
+}
+$("new").onclick = goHome;
+window.addEventListener("hashchange", () => {
+  const id = location.hash.slice(1);
+  if (id && id !== current) openRun(id, true);
+  else if (!id && current) { clearInterval(timer); clearInterval(ticker); current = null; view("form"); loadRuns(); }
+});
+
+/* ---------------- compose form ---------------- */
+const topic = $("topic");
+topic.addEventListener("input", () => { $("count").textContent = `${topic.value.length} / 400`; });
+document.querySelectorAll(".chip[data-ex]").forEach(c => c.onclick = () => {
+  topic.value = c.dataset.ex; topic.dispatchEvent(new Event("input")); topic.focus();
+});
+topic.addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $("composeForm").requestSubmit(); } });
+$("composeForm").onsubmit = async e => {
+  e.preventDefault();
+  const text = topic.value.trim();
+  if (text.length < 8) { toast("Please describe your topic in a little more detail (at least 8 characters).", "err"); topic.focus(); return; }
+  $("go").disabled = true;
+  try {
+    const { id } = await api("/api/runs", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topic: text,
+        kind: document.querySelector("input[name=kind]:checked").value,
+        turns: +document.querySelector("input[name=depth]:checked").value,
+      }),
+    });
+    await openRun(id);
+  } catch (err) { toast(err.message, "err"); }
+  $("go").disabled = false;
+};
+
+/* ---------------- progress ---------------- */
+async function openRun(id, fromHash = false) {
+  clearInterval(timer); clearInterval(ticker);
+  current = id; cursor = 0; feed = []; paperCount = 0; data = null;
+  $("feed").innerHTML = ""; $("rawlog").textContent = ""; $("papercount").textContent = "";
+  $("fail").classList.add("hidden"); $("waitnote").classList.add("hidden");
+  if (!fromHash && location.hash.slice(1) !== id) history.pushState(null, "", "#" + id);
+  view("progress"); loadRuns();
+  try { await poll(); }
+  catch (err) { toast(err.message, "err"); current = null; history.replaceState(null, "", location.pathname); view("form"); return; }
+  if (data && ACTIVE(data.status)) {
+    timer = setInterval(() => poll().catch(() => {}), 2000);
+    ticker = setInterval(tick, 1000);
+  }
+}
+
+function addFeed(ic, text) {
+  feed.unshift({ ic, text });
+  feed = feed.slice(0, 14);
+  $("feed").innerHTML = feed.map(f => `<li>${icon(f.ic)}<span>${esc(f.text)}</span></li>`).join("");
+}
+function processLog(lines) {
+  let waiting = null;
+  for (const raw of lines) {
+    const l = raw.trim();
+    if (!l) continue;
+    $("rawlog").textContent += raw + "\n";
+    let m;
+    if (/^\[\d\/5\]/.test(l)) continue;
+    if ((m = l.match(/^(search_\w+)\((.*)\)$/))) addFeed("search", `${SOURCE[m[1]] || m[1]}: “${m[2]}”`);
+    else if ((m = l.match(/^get_paper\(@?(.+)\)$/))) addFeed("file", `Reading the abstract of ${m[1]}`);
+    else if ((m = l.match(/^library: (\d+) papers/))) { paperCount = +m[1]; addFeed("layers", `${m[1]} papers collected`); }
+    else if (/rate limit|pacing/i.test(l)) { const s = l.match(/(\d+)s/); waiting = s ? +s[1] : 0; }
+    else if (/daily quota/i.test(l)) addFeed("alert", l);
+    else if (/extracting verified facts/i.test(l)) addFeed("shield", "Extracting facts and checking each quote against its abstract");
+    else if (/kept \d+ verified/i.test(l)) addFeed("check", l.replace(/^kept/i, "Kept"));
+    else if (/unsupported claim/i.test(l)) addFeed("alert", l.replace(/^\d+/, n => `Found ${n}`).replace(/; revising$/, " — rewriting them"));
+    else if (/flagged claim/i.test(l)) addFeed("alert", l);
+    else if (/^Done:/.test(l)) continue;
+    else addFeed("sparkles", l);
+  }
+  const w = $("waitnote");
+  if (waiting !== null) {
+    w.classList.remove("hidden");
+    $("waittext").textContent = waiting
+      ? `Waiting ${waiting}s for the free-tier rate limit to reset. This is normal and the run continues automatically.`
+      : "Pacing requests to stay inside the free-tier limit.";
+  } else if (lines.length) w.classList.add("hidden");
+  if (paperCount) $("papercount").textContent = `${paperCount} papers`;
+}
+function tick() {
+  if (!data) return;
+  $("elapsed").textContent = mmss(Date.now() / 1000 - data.started);
+}
+
+async function poll() {
+  const id = current;
+  const d = await api(`/api/runs/${id}?since=${cursor}`);
+  if (id !== current) return;
+  data = d;
+  cursor = data.log_total;
+  processLog(data.log);
+  const [label] = STATUS[data.status] || [data.status];
+  $("ptopic").textContent = data.topic;
+  $("pbadge").textContent = `${KIND[data.kind] || data.kind} · ${label}`;
+  $("steps").querySelectorAll(".step").forEach(li => {
+    const n = +li.dataset.s, finished = data.status.startsWith("done");
+    const done = finished || n < data.stage;
+    li.className = "step " + (done ? "done" : n === data.stage ? "active" : "");
+    li.querySelector(".node").innerHTML = icon(done ? "check" : li.dataset.ic);
+  });
+  if (data.status === "queued") $("nowtext").textContent = "Queued — waiting for the previous run to finish";
+  else $("nowtext").textContent = STAGES[data.stage] || STAGES[0];
+  tick();
+  if (ACTIVE(data.status)) return;
+
+  clearInterval(timer); clearInterval(ticker); loadRuns();
+  $("spin").classList.add("hidden");
+  if (data.status === "failed") {
+    $("now").classList.add("hidden");
+    $("fail").classList.remove("hidden");
+    $("failmsg").textContent = data.error || "Something went wrong.";
+    return;
+  }
+  $("now").classList.remove("hidden"); $("spin").classList.remove("hidden");
+  if (!data.docs) data = await api(`/api/runs/${id}`);
+  renderResult();
+}
+$("retry").onclick = () => {
+  const t = data?.topic || "";
+  goHome(); topic.value = t; topic.dispatchEvent(new Event("input")); topic.focus();
+};
+
+/* ---------------- results ---------------- */
+const finalBody = () => (data.docs.final || "").split("\n## References")[0];
+const citedKeys = () => new Set([...finalBody().matchAll(/\[@([A-Za-z0-9_:\-]+)\]/g)].map(m => m[1]));
+const libMap = () => Object.fromEntries((data.library || []).map(p => [p.key, p]));
+
+function renderResult() {
+  view("result");
+  const body = finalBody();
+  $("rkind").textContent = KIND[data.kind] || data.kind;
+  $("rdate").textContent = new Date(data.started * 1000).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  $("rtime").innerHTML = data.finished ? `${icon("clock")} ${mmss(data.finished - data.started)}` : "";
+  $("rtime").classList.toggle("hidden", !data.finished);
+  $("rtitle").textContent = data.topic;  // the page header is your question; the manuscript carries its own title
+  $("dl").href = `/api/runs/${current}/download`;
+
+  const f = data.flags, cited = citedKeys();
+  const words = body.split(/\s+/).filter(Boolean).length;
+  const stat = (n, l, cls = "") => `<div class="card stat ${cls}"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  $("stats").innerHTML =
+    stat((data.library || []).length, "Sources found") +
+    stat(cited.size, "Sources cited") +
+    stat(words.toLocaleString(), "Words") +
+    (f ? stat(f.remaining.length, f.remaining.length ? "Claims to check" : "Claims to check", f.remaining.length ? "warn" : "ok")
+       : stat("—", "Claim checks not recorded"));
+  renderFlags();
+  $("tabs").innerHTML = TABS.map(([k, n]) =>
+    `<button role="tab" data-k="${k}" aria-selected="${k === tab}">${n}${k === "library" ? `<span class="count">${(data.library || []).length}</span>` : ""}</button>`).join("");
+  renderTab();
+}
+$("tabs").onclick = e => {
+  const b = e.target.closest("button[data-k]");
+  if (!b) return;
+  tab = b.dataset.k;
+  $("tabs").querySelectorAll("button").forEach(x => x.setAttribute("aria-selected", x.dataset.k === tab));
+  renderTab();
+};
+
+function renderFlags() {
+  const f = data.flags, box = $("flags"), lib = libMap();
+  if (!f) { box.innerHTML = ""; return; }
+  const fixed = f.fixed ? ` ${f.fixed} other claim${f.fixed > 1 ? "s were" : " was"} found and rewritten automatically.` : "";
+  if (!f.remaining.length) {
+    box.innerHTML = `<div class="alert ok">${icon("shield")}<div><b>No unsupported claims detected.</b>${esc(fixed)} Still read the full papers before you rely on it.</div></div>`;
+    return;
+  }
+  box.innerHTML = `<details open><summary>${icon("alert")}<span style="flex:1;min-width:0">${f.remaining.length} claim${f.remaining.length > 1 ? "s" : ""} to check against the full paper <span style="font-weight:400;color:var(--ink-2)">— highlighted in the manuscript.${esc(fixed)}</span></span><span class="chev">${icon("chev")}</span></summary>
+    <ul class="flaglist">${f.remaining.map(x => `<li><span class="tag key">${esc(lib[x.key] ? citeLabel(lib[x.key]) : x.key)}</span>
+      <span class="tag" style="color:var(--warn)">${esc(x.verdict.toLowerCase())}</span><div style="margin-top:6px">“${esc(x.claim)}”</div>
+      ${x.why ? `<div class="why">${esc(x.why)}</div>` : ""}</li>`).join("")}</ul></details>`;
+}
+
+function highlightFlags() {
+  const root = $("doc");
+  for (const f of (data.flags?.remaining || [])) {
+    const snippet = f.claim.replace(/\[@[^\]]+\]/g, "").trim().slice(0, 45);
+    if (snippet.length < 15) continue;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n; (n = walker.nextNode());) {
+      const i = n.nodeValue.indexOf(snippet);
+      if (i < 0) continue;
+      let end = n.nodeValue.indexOf(". ", i); end = end < 0 ? n.nodeValue.length : end + 1;
+      const r = document.createRange(); r.setStart(n, i); r.setEnd(n, end);
+      const m = document.createElement("mark"); m.className = "flag"; m.title = `${f.verdict}: ${f.why}`;
+      r.surroundContents(m);
+      break;
+    }
+  }
+}
+
+function md(text) {
+  if (window.marked && window.DOMPurify) return DOMPurify.sanitize(marked.parse(text, { gfm: true }));
+  return `<pre class="fallback">${esc(text)}</pre>`;  // offline: show the raw text instead of failing
+}
+
+function renderTab() {
+  const doc = $("doc"), reader = $("reader"), toc = $("toc");
+  toc.classList.add("hidden"); reader.classList.remove("has-toc");
+  doc.className = "prose" + (tab === "final" ? "" : " sans");
+  if (tab === "library") { reader.querySelector(".sheet").style.display = "none"; renderSources(); return; }
+  reader.querySelector(".sheet").style.display = "";
+  document.getElementById("srcpanel")?.remove();
+
+  const lib = libMap();
+  let text = data.docs[tab] || "_Not available for this run._";
+  text = text.replace(/^- \*\*([A-Za-z0-9_:\-]+)\*\* — /gm, '- <span class="refkey">$1</span> ')
+            .replace(/\[@([A-Za-z0-9_:\-]+)\]/g, '<span class="cite" data-key="$1"></span>');
+  doc.innerHTML = md(text);
+  doc.querySelectorAll(".cite").forEach(el => {
+    const p = lib[el.dataset.key];
+    el.textContent = p ? citeLabel(p) : el.dataset.key;
+    el.tabIndex = 0; el.setAttribute("role", "button");
+    if (!p) el.classList.add("missing");
+  });
+  if (tab === "final") {
+    highlightFlags();
+    const heads = [...doc.querySelectorAll("h2")];
+    heads.forEach((h, i) => { h.id = "sec-" + i; });
+    if (heads.length > 2) {
+      toc.innerHTML = `<h4>On this page</h4>` + heads.map(h => `<a href="#sec-${h.id.slice(4)}">${esc(h.textContent)}</a>`).join("");
+      toc.classList.remove("hidden"); reader.classList.add("has-toc");
+      toc.querySelectorAll("a").forEach(a => a.onclick = e => { e.preventDefault(); document.getElementById(a.getAttribute("href").slice(1)).scrollIntoView({ behavior: "smooth" }); });
+    }
+  }
+}
+
+function renderSources() {
+  const cited = citedKeys();
+  const papers = [...(data.library || [])].sort((a, b) => (cited.has(b.key) - cited.has(a.key)) || ((b.year || 0) - (a.year || 0)));
+  let panel = document.getElementById("srcpanel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.id = "srcpanel"; panel.style.minWidth = "0";
+    $("reader").prepend(panel);
+  }
+  const SRC = { arxiv: "arXiv", pubmed: "PubMed", semantic_scholar: "Semantic Scholar" };
+  const card = p => `<article class="card src" data-q="${esc((p.title + " " + (p.authors || []).join(" ") + " " + (p.venue || "")).toLowerCase())}">
+    <h3>${esc(p.title)}</h3>
+    <div class="by">${esc((p.authors || []).slice(0, 5).join(", "))}${(p.authors || []).length > 5 ? " et al." : ""}</div>
+    <div class="tags">
+      ${cited.has(p.key) ? `<span class="tag cited">${icon("check")} Cited</span>` : ""}
+      <span class="tag">${p.year || "n.d."}</span>
+      ${p.venue ? `<span class="tag">${esc(p.venue)}</span>` : ""}
+      <span class="tag">${esc(SRC[p.source] || p.source)}</span>
+      ${p.citations != null ? `<span class="tag">${p.citations.toLocaleString()} citations</span>` : ""}
+      <span class="tag key">${esc(p.key)}</span>
+      ${(p.doi || p.url) ? `<span class="links"><a href="${esc(p.doi ? "https://doi.org/" + p.doi : p.url)}" target="_blank" rel="noopener noreferrer">Open paper ${icon("ext")}</a></span>` : ""}
+    </div>
+    ${p.abstract ? `<details><summary>Abstract</summary><p>${esc(p.abstract)}</p></details>` : ""}</article>`;
+  panel.innerHTML = `<div class="src-tools"><input type="search" id="srcq" placeholder="Filter by title, author or journal" aria-label="Filter sources">
+      <span class="hint">${papers.length} sources · ${cited.size} cited in the manuscript</span></div>
+    <div class="srcs" id="srclist">${papers.map(card).join("") || '<div class="none">No sources recorded for this run.</div>'}</div>`;
+  $("srcq").oninput = e => {
+    const q = e.target.value.trim().toLowerCase();
+    panel.querySelectorAll(".src").forEach(c => c.classList.toggle("hidden", !!q && !c.dataset.q.includes(q)));
+  };
+}
+
+/* citation popover */
+let popTimer = null;
+function showPop(el) {
+  const p = libMap()[el.dataset.key], pop = $("pop");
+  clearTimeout(popTimer);
+  pop.innerHTML = p
+    ? `<b>${esc(p.title)}</b><div class="meta">${esc((p.authors || []).slice(0, 3).join(", "))}${(p.authors || []).length > 3 ? " et al." : ""} · ${p.year || "n.d."}${p.venue ? " · " + esc(p.venue) : ""}</div>
+       ${p.abstract ? `<p>${esc(p.abstract.slice(0, 230))}${p.abstract.length > 230 ? "…" : ""}</p>` : ""}
+       ${(p.doi || p.url) ? `<a href="${esc(p.doi ? "https://doi.org/" + p.doi : p.url)}" target="_blank" rel="noopener noreferrer">Open paper ${icon("ext")}</a>` : ""}`
+    : `<b>Not in the source library</b><div class="meta">This citation key (${esc(el.dataset.key)}) matches no paper that was found. Treat the sentence as unsupported.</div>`;
+  pop.classList.remove("hidden");
+  const r = el.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  let left = Math.min(Math.max(12, r.left + r.width / 2 - pw / 2), innerWidth - pw - 12);
+  let top = r.bottom + 8;
+  if (top + ph > innerHeight - 12) top = Math.max(12, r.top - ph - 8);
+  pop.style.left = left + "px"; pop.style.top = top + "px";
+}
+const hidePop = () => { popTimer = setTimeout(() => $("pop").classList.add("hidden"), 160); };
+document.addEventListener("mouseover", e => { const c = e.target.closest(".cite"); if (c) showPop(c); else if (e.target.closest("#pop")) clearTimeout(popTimer); });
+document.addEventListener("mouseout", e => { if (e.target.closest(".cite") || e.target.closest("#pop")) hidePop(); });
+document.addEventListener("focusin", e => { const c = e.target.closest(".cite"); if (c) showPop(c); });
+document.addEventListener("focusout", e => { if (e.target.closest(".cite")) hidePop(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("pop").classList.add("hidden"); });
+
+$("copy").onclick = async () => {
+  try { await navigator.clipboard.writeText(data.docs.final || ""); toast("Manuscript copied to the clipboard"); }
+  catch { toast("Could not copy. Use the Markdown download instead.", "err"); }
+};
+
+/* ---------------- PDF with the author's details ---------------- */
+const PDF_FIELDS = { f_name: "name", f_aff: "affiliation", f_email: "email", f_orcid: "orcid" };
+$("pdfbtn").onclick = () => {
+  for (const [id, k] of Object.entries(PDF_FIELDS)) $(id).value = store.get("author_" + k);  // convenience only; stays in this browser
+  $("pdferr").textContent = "";
+  $("pdfdlg").showModal();
+  $("f_name").focus();
+};
+$("pdfcancel").onclick = $("pdfx").onclick = () => $("pdfdlg").close();
+$("pdfdlg").addEventListener("click", e => { if (e.target === $("pdfdlg")) $("pdfdlg").close(); });
+$("pdfform").onsubmit = async e => {
+  e.preventDefault();
+  const body = { disclosure: $("f_disc").checked };
+  for (const [id, k] of Object.entries(PDF_FIELDS)) { body[k] = $(id).value.trim(); store.set("author_" + k, body[k]); }
+  const btn = $("pdfgo"), label = btn.innerHTML;
+  btn.disabled = true; btn.innerHTML = '<span class="spin" style="width:15px;height:15px;border-width:2px"></span>Creating…';
+  try {
+    const r = await fetch(`/api/runs/${current}/pdf`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      throw new Error(Array.isArray(j.detail) ? j.detail.map(x => x.msg).join("; ") : (j.detail || r.statusText));
+    }
+    const url = URL.createObjectURL(await r.blob());
+    const a = Object.assign(document.createElement("a"), { href: url, download: `${(data.topic || "paper").slice(0, 40).replace(/[^\w]+/g, "-")}.pdf` });
+    document.body.append(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    $("pdfdlg").close();
+    toast("Your PDF is ready");
+  } catch (err) { $("pdferr").textContent = "Could not create the PDF: " + err.message; }
+  btn.disabled = false; btn.innerHTML = label;
+};
+
+/* ---------------- start up ---------------- */
+(async () => {
+  try {
+    const h = await api("/api/health");
+    $("nokey").classList.toggle("hidden", h.api_key_set);
+    $("modelname").textContent = (h.model || "").replace(/^models\//, "");
+  } catch { $("modelname").textContent = "server unreachable"; }
+  loadRuns();
+  const id = location.hash.slice(1);
+  if (id) openRun(id, true);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+requests
+pytest
+fastapi
+uvicorn
+httpx
+reportlab
+pypdf
